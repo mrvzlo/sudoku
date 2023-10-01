@@ -9,6 +9,10 @@
       <select @change="changePreset">
          <option v-for="(preset, i) in presets" :key="i">{{ preset.name }}</option>
       </select>
+      <button v-on:click="solve">Solve</button>
+   </div>
+   <div>
+      <div v-for="(log, i) in logs" :key="i">{{ log }}</div>
    </div>
 </template>
 
@@ -16,10 +20,13 @@
 import { reactive } from 'vue';
 import { Vue } from 'vue-class-component';
 import Board from './board';
+import Solver from './solver';
 
 export default class App extends Vue {
    board = reactive(new Board());
    presets = require('./presets.json');
+   solver = new Solver();
+   logs = reactive([] as string[]);
 
    validateInput(cell: number, data: string) {
       if (!data) return;
@@ -31,6 +38,10 @@ export default class App extends Vue {
       const selected = (event.target as HTMLInputElement).value;
       const cells = (this.presets as any[]).find((x) => x.name === selected).cells;
       this.board.loadPreset(cells);
+   }
+
+   solve() {
+      this.logs = this.solver.run(this.board as Board);
    }
 }
 </script>
@@ -75,7 +86,7 @@ input {
 .cell:nth-child(3n + 1) {
    border-left: solid 2px black;
 }
-.cell:nth-child(3n) {
+.cell:nth-child(9n) {
    border-right: solid 2px black;
 }
 .cell:nth-child(-n + 9),
