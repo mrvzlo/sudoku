@@ -1,8 +1,10 @@
 <template>
    <div class="board">
-      <div class="cell" v-for="(cell, i) in board.cells" :key="i">
+      <div :class="'cell ' + (cell.editable ? '' : 'readonly')" v-for="(cell, i) in board.cells" :key="i">
          <span v-if="!cell.editable">{{ cell.value }}</span>
          <input v-else v-model="cell.value" type="number" min="1" max="9" @input="(e) => validateInput(i, (e as InputEvent).data!)" />
+         <div v-if="board.lines[i] === 0 || board.lines[i] === 2" class="vl"></div>
+         <div v-if="board.lines[i] === 1 || board.lines[i] === 2" class="hl"></div>
       </div>
    </div>
    <div class="buttons">
@@ -10,9 +12,10 @@
          <option v-for="(preset, i) in presets" :key="i">{{ preset.name }}</option>
       </select>
       <button v-on:click="solve">Solve</button>
+      <button v-on:click="stop()">Stop</button>
    </div>
-   <div>
-      <div v-for="(log, i) in logs" :key="i">{{ log }}</div>
+   <div class="logs">
+      <div v-for="(log, i) in logs" :key="i">{{ logs[logs.length - i - 1] }}</div>
    </div>
 </template>
 
@@ -36,12 +39,16 @@ export default class App extends Vue {
 
    changePreset(event: Event) {
       const selected = (event.target as HTMLInputElement).value;
-      const cells = (this.presets as any[]).find((x) => x.name === selected).cells;
-      this.board.loadPreset(cells);
+      const preset = (this.presets as any[]).find((x) => x.name === selected);
+      this.board.loadPreset(preset.cells, preset.lines);
    }
 
    solve() {
       this.logs = this.solver.run(this.board as Board);
+   }
+
+   stop() {
+      this.solver.stop();
    }
 }
 </script>
@@ -71,6 +78,13 @@ app {
    border: solid 2px #5551;
    margin-bottom: -2px;
    margin-right: -2px;
+   position: relative;
+}
+.cell span {
+   line-height: 1.5;
+}
+.cell.readonly {
+   background-color: #eee;
 }
 
 input {
@@ -100,5 +114,46 @@ input {
 .buttons {
    width: 400px;
    margin: 10px auto;
+}
+.logs {
+   height: 200px;
+   overflow: auto;
+   display: flex;
+   flex-direction: column-reverse;
+   max-width: 30vw;
+   min-width: 250px;
+   margin: 0 auto;
+}
+
+.cell,
+input {
+   font-family: 'Courier New', Courier, monospace;
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+   -webkit-appearance: none;
+   margin: 0;
+}
+
+.hl,
+.vl {
+   position: absolute;
+   background-color: #000;
+   opacity: 0.1;
+}
+
+.vl {
+   width: 10%;
+   height: 100%;
+   top: 0%;
+   left: 45%;
+}
+
+.hl {
+   width: 100%;
+   height: 10%;
+   top: 45%;
+   left: 0;
 }
 </style>

@@ -3,6 +3,7 @@ import Swap from './swap';
 
 export default class Solver {
    private animationSpeed = 100;
+   private stopTriggered = false;
 
    public run(board: Board) {
       const logs: string[] = [];
@@ -17,7 +18,11 @@ export default class Solver {
       const swaps: Swap[] = [];
       editable.forEach((a) =>
          editable.forEach((b) => {
-            if (a !== b) swaps.push({ a, b });
+            const ax = Math.floor((a % 9) / 3);
+            const bx = Math.floor((b % 9) / 3);
+            const ay = Math.floor(a / 27);
+            const by = Math.floor(b / 27);
+            if (a !== b && ax === bx && ay === by) swaps.push({ a, b });
          })
       );
       return swaps;
@@ -50,6 +55,34 @@ export default class Solver {
       return x + y * 9;
    }
 
+   private animatedLoop(board: Board, swaps: Swap[], logs: string[]) {
+      let errors = board.getErrors();
+      if (swaps.length === 0 && errors > 0) {
+         logs.push('Unsolveable');
+         return;
+      }
+
+      let iterations = 0;
+      logs.push(`0) ${errors} error(s)`);
+
+      const runIteration = () => {
+         iterations++;
+         const result = this.findBestSwap(board, swaps);
+         this.runSwap(result.bestSwap, board);
+         if (errors === result.bestResult) {
+            // if no improvement - jump out of local minimum
+            this.runSwap(this.getRandom(swaps), board);
+         }
+         errors = result.bestResult;
+         logs.push(`${iterations}) ${errors} error(s), swap ${result.bestSwap.a} and ${result.bestSwap.b}`);
+
+         if (errors > 0 && !this.stopTriggered) setTimeout(() => runIteration(), this.animationSpeed);
+         else this.stopTriggered = false;
+      };
+
+      if (errors > 0) runIteration();
+   }
+
    private findBestSwap(board: Board, swaps: Swap[]) {
       let bestResult = Infinity;
       let bestSwap!: Swap;
@@ -64,7 +97,7 @@ export default class Solver {
 
    private getGuessScore(swap: Swap, board: Board) {
       this.runSwap(swap, board);
-      const errors = board.getErrorsCount();
+      const errors = board.getErrors();
       this.runSwap(swap, board); // Its cheaper to rollback array values swap than allocae memory for different array instances
       return errors;
    }
@@ -76,26 +109,7 @@ export default class Solver {
       board.cells[swap.b].value = a;
    }
 
-   private animatedLoop(board: Board, swaps: Swap[], logs: string[]) {
-      let errors = board.getErrorsCount();
-      if (swaps.length === 0 && errors > 0) {
-         logs.push('Unsolveable');
-         return;
-      }
+   public stop = () => (this.stopTriggered = true);
 
-      let iterations = 0;
-      logs.push(`0) ${errors} error(s)`);
-
-      const runIteration = () => {
-         iterations++;
-         const result = this.findBestSwap(board, swaps);
-         this.runSwap(result.bestSwap, board);
-         errors = result.bestResult;
-         logs.push(`${iterations}) ${errors} error(s), swap ${result.bestSwap.a} and ${result.bestSwap.b}`);
-
-         if (errors > 0) setTimeout(() => runIteration(), this.animationSpeed);
-      };
-
-      if (errors > 0) runIteration();
-   }
+   private getRandom = (list: any[]) => list[Math.floor(Math.random() * list.length)];
 }
